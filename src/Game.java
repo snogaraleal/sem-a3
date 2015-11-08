@@ -276,12 +276,21 @@ public class Game {
         private static final int INTERVAL = 1;
         private static final int PROXIMITY = 2;
 
-        protected RobotSE user;
-        protected RobotSE enemy;
+        protected DestroyableRobot user;
+        protected DestroyableRobot enemy;
 
         protected Listener listener;
 
-        public WorldController(RobotSE user, RobotSE enemy, Listener listener) {
+        /**
+         * Initialize {@code WorldController}.
+         * @param user User robot
+         * @param enemy Enemy robot
+         * @param listener {@code Listener}
+         */
+        public WorldController(
+                DestroyableRobot user, DestroyableRobot enemy,
+                Listener listener) {
+
             super();
 
             this.user = user;
@@ -309,7 +318,7 @@ public class Game {
      */
     public static abstract class RobotController extends Controller {
 
-        protected RobotSE robot;
+        protected DestroyableRobot robot;
 
         protected int width;
         protected int height;
@@ -320,7 +329,7 @@ public class Game {
          * @param width Width boundary
          * @param height Height boundary
          */
-        public RobotController(RobotSE robot, int width, int height) {
+        public RobotController(DestroyableRobot robot, int width, int height) {
             super();
 
             this.robot = robot;
@@ -341,7 +350,7 @@ public class Game {
          * @param width Width boundary
          * @param height Height boundary
          */
-        public EnemyRobotController(RobotSE robot, int width, int height) {
+        public EnemyRobotController(DestroyableRobot robot, int width, int height) {
             super(robot, width, height);
         }
 
@@ -453,7 +462,7 @@ public class Game {
          * @param listener Action listener
          */
         public UserRobotController(
-                RobotSE robot, int width, int height,
+                DestroyableRobot robot, int width, int height,
                 Listener listener) {
 
             super(robot, width, height);
@@ -532,11 +541,13 @@ public class Game {
         }
     }
 
+    private City city;
+    private Mode mode;
     private int width;
     private int height;
 
-    private RobotSE enemy;
-    private RobotSE user;
+    private DestroyableRobot enemy;
+    private DestroyableRobot user;
 
     private WorldController worldController;
     private EnemyRobotController enemyController;
@@ -545,20 +556,25 @@ public class Game {
     private WorldController.Listener worldListener;
     private UserRobotController.Listener userListener;
 
+    private boolean running = false;
+
     /**
      * Initialize {@code Game}.
      * @param city City in which the game is played
+     * @param mode Initial difficulty mode
      * @param width Width boundary
      * @param height Height boundary
      * @param worldListener {@code WorldController.Listener}
      * @param userListener {@code UserRobotController.Listener}
      */
     public Game(
-            City city, int width, int height,
+            City city, Mode mode, int width, int height,
             WorldController.Listener worldListener,
             UserRobotController.Listener userListener) {
 
-        city.setSize(width, height);
+        this.city = city;
+        this.city.setSize(width, height);
+        this.mode = mode;
 
         this.width = width;
         this.height = height;
@@ -568,16 +584,10 @@ public class Game {
 
         Random random = ThreadLocalRandom.current();
 
-        // Create robots
-        enemy = new RobotSE(
+        // Create user
+        user = new DestroyableRobot(
                 city, random.nextInt(width), random.nextInt(height),
                 Direction.random().toBecker());
-        user = new RobotSE(
-                city, random.nextInt(width), random.nextInt(height),
-                Direction.random().toBecker());
-
-        // Set robot colors
-        enemy.setColor(Color.RED);
         user.setColor(Color.BLUE);
     }
 
@@ -586,15 +596,39 @@ public class Game {
      * @param mode Mode
      */
     public void setMode(Mode mode) {
+        this.mode = mode;
+
+        // Change enemy speed right away
         double speed = user.getSpeed();
         speed *= mode.getSpeed();
         enemy.setSpeed(speed);
     }
 
     /**
+     * Initialize game.
+     */
+    public void reset() {
+        Random random = ThreadLocalRandom.current();
+
+        // Create enemy
+        enemy = new DestroyableRobot(
+                city, random.nextInt(width), random.nextInt(height),
+                Direction.random().toBecker());
+        enemy.setColor(Color.RED);
+
+        // Create thing
+        new Thing(city, random.nextInt(width), random.nextInt(height));
+
+        // Reflect difficulty mode
+        setMode(this.mode);
+    }
+
+    /**
      * Start game.
      */
     public void start() {
+        running = true;
+
         worldController = new WorldController(
                 user, enemy, worldListener);
         enemyController = new EnemyRobotController(
@@ -614,19 +648,41 @@ public class Game {
         worldController.terminate();
         enemyController.terminate();
         userController.terminate();
+
+        worldController = null;
+        enemyController = null;
+        userController = null;
+
+        running = false;
+    }
+
+    /**
+     * Get whether the game is running.
+     * @return Running
+     */
+    public boolean isRunning() {
+        return running;
     }
 
     /**
      * Get user robot.
      * @return User robot
      */
-    public RobotSE getUser() {
+    public DestroyableRobot getUser() {
         return user;
     }
 
     /**
+     * Get enemy robot.
+     * @return Enemy question
+     */
+    public DestroyableRobot getEnemy() {
+        return enemy;
+    }
+
+    /**
      * Get user robot controller.
-     * @return User robot controller.
+     * @return User robot controller
      */
     public UserRobotController getUserController() {
         return userController;

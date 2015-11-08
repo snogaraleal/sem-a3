@@ -65,9 +65,11 @@ public class Main implements
         frame.pack();
         frame.setVisible(true);
 
-        game = new Game(city, CITY_WIDTH, CITY_HEIGHT, this, this);
+        game = new Game(
+                city, Game.Mode.DEFAULT,
+                CITY_WIDTH, CITY_HEIGHT, this, this);
         game.getUser().setSpeed(10);
-        game.setMode(Game.Mode.DEFAULT);
+        game.reset();
         game.start();
     }
 
@@ -93,11 +95,17 @@ public class Main implements
 
     @Override
     public void onPause() {
-        game.stop();
+        if (game.isRunning()) {
+            game.stop();
+        } else {
+            game.start();
+        }
     }
 
     @Override
     public void onRestart() {
+        game.stop();
+        game.reset();
         game.start();
     }
 
@@ -121,6 +129,11 @@ public class Main implements
 
     @Override
     public void onThingPicked() {
+        try {
+            game.getEnemy().destroy();
+        } catch (RobotException exception) {
+            // TODO: Finish game
+        }
     }
 
     /*
@@ -138,5 +151,6 @@ public class Main implements
 
     @Override
     public void onCollisionChanged(boolean collision) {
+        // TODO: Finish game
     }
 }
