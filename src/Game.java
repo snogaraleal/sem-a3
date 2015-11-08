@@ -1,5 +1,6 @@
 import becker.robots.*;
 
+import java.awt.*;
 import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
@@ -211,28 +212,17 @@ public class Game {
     }
 
     /**
-     * Robot controller.
+     * Base controller {@code Thread}.
      */
     public static abstract class Controller extends Thread {
 
-        protected RobotSE robot;
         protected volatile boolean running;
-
-        protected int width;
-        protected int height;
 
         /**
          * Initialize {@code Controller}.
-         * @param robot Robot to control
-         * @param width Width boundary
-         * @param height Height boundary
          */
-        public Controller(RobotSE robot, int width, int height) {
-            this.robot = robot;
+        public Controller() {
             this.running = false;
-
-            this.width = width;
-            this.height = height;
         }
 
         /**
@@ -263,17 +253,95 @@ public class Game {
     }
 
     /**
-     * {@code Controller} for a robot that moves randomly.
+     * {@code Controller} for game world that detects proximity and
+     * collision between two robots.
      */
-    public static class EnemyController extends Controller {
+    public static class WorldController extends Controller {
 
         /**
-         * Initialize {@code EnemyController}.
+         * Action {@code Listener}.
+         */
+        public interface Listener {
+            /**
+             * Indicate proximity between robots.
+             */
+            void onProximityChanged(boolean proximity);
+
+            /**
+             * Indicate collision between robots.
+             */
+            void onCollisionChanged(boolean collision);
+        }
+
+        private static final int INTERVAL = 1;
+        private static final int PROXIMITY = 2;
+
+        protected RobotSE user;
+        protected RobotSE enemy;
+
+        protected Listener listener;
+
+        public WorldController(RobotSE user, RobotSE enemy, Listener listener) {
+            super();
+
+            this.user = user;
+            this.enemy = enemy;
+
+            this.listener = listener;
+        }
+
+        @Override
+        public void next() throws InterruptedException {
+
+            listener.onCollisionChanged(
+                user.getIntersection() == enemy.getIntersection());
+
+            listener.onProximityChanged(
+                (Math.abs(user.getAvenue() - enemy.getAvenue()) <= PROXIMITY) &&
+                (Math.abs(user.getStreet() - enemy.getStreet()) <= PROXIMITY));
+
+            Thread.sleep(INTERVAL);
+        }
+    }
+
+    /**
+     * {@code Controller} for a moving robot.
+     */
+    public static abstract class RobotController extends Controller {
+
+        protected RobotSE robot;
+
+        protected int width;
+        protected int height;
+
+        /**
+         * Initialize {@code Controller}.
          * @param robot Robot to control
          * @param width Width boundary
          * @param height Height boundary
          */
-        public EnemyController(RobotSE robot, int width, int height) {
+        public RobotController(RobotSE robot, int width, int height) {
+            super();
+
+            this.robot = robot;
+
+            this.width = width;
+            this.height = height;
+        }
+    }
+
+    /**
+     * {@code RobotController} for a robot that moves randomly.
+     */
+    public static class EnemyRobotController extends RobotController {
+
+        /**
+         * Initialize {@code EnemyRobotController}.
+         * @param robot Robot to control
+         * @param width Width boundary
+         * @param height Height boundary
+         */
+        public EnemyRobotController(RobotSE robot, int width, int height) {
             super(robot, width, height);
         }
 
@@ -313,19 +381,19 @@ public class Game {
     }
 
     /**
-     * {@code Controller} for a robot that moves based on specific input.
+     * {@code RobotController} for a robot that moves based on specific input.
      */
-    public static class UserController extends Controller {
+    public static class UserRobotController extends RobotController {
 
         private BlockingQueue<Direction> queue = new LinkedBlockingQueue<>();
 
         /**
-         * Initialize {@code UserController}.
+         * Initialize {@code UserRobotController}.
          * @param robot Robot to control
          * @param width Width boundary
          * @param height Height boundary
          */
-        public UserController(RobotSE robot, int width, int height) {
+        public UserRobotController(RobotSE robot, int width, int height) {
             super(robot, width, height);
         }
 
@@ -389,23 +457,32 @@ public class Game {
     private int width;
     private int height;
 
+    private WorldController.Listener listener;
+
     private RobotSE enemy;
     private RobotSE user;
 
-    private EnemyController enemyController;
-    private UserController userController;
+    private WorldController worldController;
+    private EnemyRobotController enemyController;
+    private UserRobotController userController;
 
     /**
      * Initialize {@code Game}.
      * @param city City in which the game is played
      * @param width Width boundary
      * @param height Height boundary
+     * @param listener {@code WorldController.Listener}
      */
-    public Game(City city, int width, int height) {
+    public Game(
+            City city, int width, int height,
+            WorldController.Listener listener) {
+
         city.setSize(width, height);
 
         this.width = width;
         this.height = height;
+
+        this.listener = listener;
 
         Random random = ThreadLocalRandom.current();
 
@@ -416,6 +493,10 @@ public class Game {
         user = new RobotSE(
                 city, random.nextInt(width), random.nextInt(height),
                 Direction.random().toBecker());
+
+        // Set robot colors
+        enemy.setColor(Color.RED);
+        user.setColor(Color.BLUE);
     }
 
     /**
@@ -432,9 +513,11 @@ public class Game {
      * Start game.
      */
     public void start() {
-        enemyController = new EnemyController(enemy, width, height);
-        userController = new UserController(user, width, height);
+        worldController = new WorldController(user, enemy, listener);
+        enemyController = new EnemyRobotController(enemy, width, height);
+        userController = new UserRobotController(user, width, height);
 
+        worldController.start();
         enemyController.start();
         userController.start();
     }
@@ -443,6 +526,7 @@ public class Game {
      * Stop game.
      */
     public void stop() {
+        worldController.terminate();
         enemyController.terminate();
         userController.terminate();
     }
@@ -459,7 +543,7 @@ public class Game {
      * Get user robot controller.
      * @return User robot controller.
      */
-    public UserController getUserController() {
+    public UserRobotController getUserController() {
         return userController;
     }
 }

@@ -79,10 +79,14 @@ public class UI {
 
         private GridBagLayout layout = new GridBagLayout();
 
-        private JButton up = new JButton(new Action(this, Game.Direction.UP));
-        private JButton down = new JButton(new Action(this, Game.Direction.DOWN));
-        private JButton left = new JButton(new Action(this, Game.Direction.LEFT));
-        private JButton right = new JButton(new Action(this, Game.Direction.RIGHT));
+        private JButton up = new JButton(
+                new Action(this, Game.Direction.UP));
+        private JButton down = new JButton(
+                new Action(this, Game.Direction.DOWN));
+        private JButton left = new JButton(
+                new Action(this, Game.Direction.LEFT));
+        private JButton right = new JButton(
+                new Action(this, Game.Direction.RIGHT));
         private JButton pick = new JButton();
 
         /**
