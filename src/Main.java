@@ -41,6 +41,7 @@ public class Main implements
         root.add(control);
 
         JFrame frame = new JFrame(WIN_TITLE);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setContentPane(root);
         frame.setJMenuBar(menu);
         frame.setSize(WIN_WIDTH, WIN_HEIGHT);
@@ -74,6 +75,7 @@ public class Main implements
 
     @Override
     public void onQuit() {
+        System.exit(0);
     }
 
     @Override

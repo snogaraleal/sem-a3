@@ -218,13 +218,21 @@ public class Game {
         protected RobotSE robot;
         protected volatile boolean running;
 
+        protected int width;
+        protected int height;
+
         /**
          * Initialize {@code Controller}.
          * @param robot Robot to control
+         * @param width Width boundary
+         * @param height Height boundary
          */
-        public Controller(RobotSE robot) {
+        public Controller(RobotSE robot, int width, int height) {
             this.robot = robot;
             this.running = false;
+
+            this.width = width;
+            this.height = height;
         }
 
         /**
@@ -259,9 +267,6 @@ public class Game {
      */
     public static class EnemyController extends Controller {
 
-        private int width;
-        private int height;
-
         /**
          * Initialize {@code EnemyController}.
          * @param robot Robot to control
@@ -269,10 +274,7 @@ public class Game {
          * @param height Height boundary
          */
         public EnemyController(RobotSE robot, int width, int height) {
-            super(robot);
-
-            this.width = width;
-            this.height = height;
+            super(robot, width, height);
         }
 
         @Override
@@ -320,9 +322,11 @@ public class Game {
         /**
          * Initialize {@code UserController}.
          * @param robot Robot to control
+         * @param width Width boundary
+         * @param height Height boundary
          */
-        public UserController(RobotSE robot) {
-            super(robot);
+        public UserController(RobotSE robot, int width, int height) {
+            super(robot, width, height);
         }
 
         /**
@@ -346,6 +350,25 @@ public class Game {
             Direction current = Direction.fromBecker(robot.getDirection());
 
             if (current == next) {
+                int x = robot.getAvenue();
+                int y = robot.getStreet();
+
+                // Check boundaries
+                switch (robot.getDirection()) {
+                    case NORTH:
+                        if (y == 0) return;
+                        break;
+                    case WEST:
+                        if (x == 0) return;
+                        break;
+                    case SOUTH:
+                        if (y == height) return;
+                        break;
+                    case EAST:
+                        if (x == width) return;
+                        break;
+                }
+
                 robot.move();
             } else {
                 Direction.Delta delta = current.delta(next);
@@ -410,7 +433,7 @@ public class Game {
      */
     public void start() {
         enemyController = new EnemyController(enemy, width, height);
-        userController = new UserController(user);
+        userController = new UserController(user, width, height);
 
         enemyController.start();
         userController.start();
