@@ -9,6 +9,8 @@ public class Main implements
         UI.ControlPanel.Listener,
         UI.ActionsMenu.Listener,
         UI.SettingsMenu.Listener,
+
+        Game.UserRobotController.Listener,
         Game.WorldController.Listener {
 
     public static void main(String[] args) {
@@ -63,20 +65,31 @@ public class Main implements
         frame.pack();
         frame.setVisible(true);
 
-        game = new Game(city, CITY_WIDTH, CITY_HEIGHT, this);
+        game = new Game(city, CITY_WIDTH, CITY_HEIGHT, this, this);
         game.getUser().setSpeed(10);
         game.setMode(Game.Mode.DEFAULT);
         game.start();
     }
 
+    /*
+     * {@code UI.ControlPanel.Listener}
+     */
+
     @Override
     public void onDirectionChange(Game.Direction direction) {
-        game.getUserController().enqueue(direction);
+        game.getUserController().enqueue(new Game.UserRobotController.Task(
+                Game.UserRobotController.Task.Command.MOVE, direction));
     }
 
     @Override
     public void onPick() {
+        game.getUserController().enqueue(new Game.UserRobotController.Task(
+                Game.UserRobotController.Task.Command.PICK));
     }
+
+    /*
+     * {@code UI.ActionsMenu.Listener}
+     */
 
     @Override
     public void onPause() {
@@ -93,10 +106,26 @@ public class Main implements
         System.exit(0);
     }
 
+    /*
+     * {@code UI.SettingsMenu.Listener}
+     */
+
     @Override
     public void onModeChange(Game.Mode mode) {
         game.setMode(mode);
     }
+
+    /*
+     * {@code Game.UserRobotController.Listener}
+     */
+
+    @Override
+    public void onThingPicked() {
+    }
+
+    /*
+     * {@code Game.WorldController.Listener}
+     */
 
     @Override
     public void onProximityChanged(boolean proximity) {

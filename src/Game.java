@@ -385,36 +385,114 @@ public class Game {
      */
     public static class UserRobotController extends RobotController {
 
-        private BlockingQueue<Direction> queue = new LinkedBlockingQueue<>();
+        /**
+         * {@code Task} that can be performed by the user robot.
+         */
+        public static class Task {
+
+            /**
+             * Action to perform.
+             */
+            public enum Command {
+                PICK,
+                MOVE,
+            }
+
+            private Command command;
+            private Direction direction;
+
+            /**
+             * Initialize {@code Task}.
+             * @param command Action to perform
+             */
+            public Task(Command command) {
+                this.command = command;
+            }
+
+            public Task(Command command, Direction direction) {
+                this(command);
+                this.direction = direction;
+            }
+
+            /**
+             * Get action to perform.
+             * @return Action
+             */
+            public Command getCommand() {
+                return command;
+            }
+
+            /**
+             * Get direction.
+             * @return Direction
+             */
+            public Direction getDirection() {
+                return direction;
+            }
+        }
+
+        /**
+         * Action {@code Listener}.
+         */
+        public interface Listener {
+            /**
+             * Indicate something was picked.
+             */
+            void onThingPicked();
+        }
+
+        private BlockingQueue<Task> queue = new LinkedBlockingQueue<>();
+
+        protected Listener listener;
 
         /**
          * Initialize {@code UserRobotController}.
          * @param robot Robot to control
          * @param width Width boundary
          * @param height Height boundary
+         * @param listener Action listener
          */
-        public UserRobotController(RobotSE robot, int width, int height) {
+        public UserRobotController(
+                RobotSE robot, int width, int height,
+                Listener listener) {
+
             super(robot, width, height);
+            this.listener = listener;
         }
 
         /**
          * Indicate move in the specified direction.
-         * @param direction Direction in which to move
+         * @param task Task to perform
          */
-        public void enqueue(Direction direction) {
-            queue.add(direction);
+        public void enqueue(Task task) {
+            queue.add(task);
         }
 
         @Override
         public void next() throws InterruptedException {
-            handle(queue.take());
+            Task task = queue.take();
+            switch (task.getCommand()) {
+                case PICK: pick(); break;
+                case MOVE: move(task.getDirection()); break;
+            }
+        }
+
+        /**
+         * Perform pick action.
+         */
+        private void pick() {
+            if (robot.canPickThing()) {
+                robot.pickThing();
+
+                listener.onThingPicked();
+            }
         }
 
         /**
          * Perform move with robot.
          * @param next Direction in which to move
          */
-        private void handle(Direction next) {
+        private void move(Direction next) {
             Direction current = Direction.fromBecker(robot.getDirection());
 
             if (current == next) {
@@ -457,8 +535,6 @@ public class Game {
     private int width;
     private int height;
 
-    private WorldController.Listener listener;
-
     private RobotSE enemy;
     private RobotSE user;
 
@@ -466,23 +542,29 @@ public class Game {
     private EnemyRobotController enemyController;
     private UserRobotController userController;
 
+    private WorldController.Listener worldListener;
+    private UserRobotController.Listener userListener;
+
     /**
      * Initialize {@code Game}.
      * @param city City in which the game is played
      * @param width Width boundary
      * @param height Height boundary
-     * @param listener {@code WorldController.Listener}
+     * @param worldListener {@code WorldController.Listener}
+     * @param userListener {@code UserRobotController.Listener}
      */
     public Game(
             City city, int width, int height,
-            WorldController.Listener listener) {
+            WorldController.Listener worldListener,
+            UserRobotController.Listener userListener) {
 
         city.setSize(width, height);
 
         this.width = width;
         this.height = height;
 
-        this.listener = listener;
+        this.worldListener = worldListener;
+        this.userListener = userListener;
 
         Random random = ThreadLocalRandom.current();
 
@@ -513,9 +595,12 @@ public class Game {
      * Start game.
      */
     public void start() {
-        worldController = new WorldController(user, enemy, listener);
-        enemyController = new EnemyRobotController(enemy, width, height);
-        userController = new UserRobotController(user, width, height);
+        worldController = new WorldController(
+                user, enemy, worldListener);
+        enemyController = new EnemyRobotController(
+                enemy, width, height);
+        userController = new UserRobotController(
+                user, width, height, userListener);
 
         worldController.start();
         enemyController.start();
