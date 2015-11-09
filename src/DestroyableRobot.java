@@ -27,6 +27,6 @@ public class DestroyableRobot extends RobotSE {
      */
     public void remove() {
         destroy();
-        setTransparency(1.0);
+        setIcon(null);
     }
 }

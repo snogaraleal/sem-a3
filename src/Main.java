@@ -17,18 +17,30 @@ public class Main implements
         new Main().start();
     }
 
+    /*
+     * Frame
+     */
     private static final String WIN_TITLE = "Game";
     private static final int WIN_WIDTH = 640;
     private static final int WIN_HEIGHT = 480;
 
+    /*
+     * Dialog
+     */
     private static final String DIALOG_TITLE = "Game Over";
     private static final String DIALOG_WIN = "You win! \n Restart game?";
     private static final String DIALOG_LOSE = "You lose! \n Restart game?";
 
+    /*
+     * City
+     */
     private static final int CITY_WIDTH = 10;
     private static final int CITY_HEIGHT = 10;
     private static final int CITY_ZOOM = 30;
 
+    /*
+     * Border
+     */
     private static final int BORDER_WIDTH = 10;
     private static final Border BORDER_ALERT =
             new BorderUIResource.LineBorderUIResource(Color.RED, BORDER_WIDTH);
@@ -39,6 +51,9 @@ public class Main implements
     private Game game;
     private CityView view;
 
+    /**
+     * Start application.
+     */
     public void start() {
         City.showFrame(false);
         City city = new City();
@@ -49,10 +64,12 @@ public class Main implements
 
         UI.ControlPanel control = new UI.ControlPanel(this);
 
+        // Create main menu bar
         JMenuBar menu = new JMenuBar();
         menu.add(new UI.ActionsMenu(this));
         menu.add(new UI.SettingsMenu(this));
 
+        // Create main panel
         JPanel root = new JPanel();
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         view = components.getCityView();
@@ -60,6 +77,7 @@ public class Main implements
         root.add(view);
         root.add(control);
 
+        // Create main frame
         JFrame frame = new JFrame(WIN_TITLE);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setContentPane(root);
@@ -68,6 +86,7 @@ public class Main implements
         frame.pack();
         frame.setVisible(true);
 
+        // Create and start game
         game = new Game(
                 city, Game.Mode.DEFAULT,
                 CITY_WIDTH, CITY_HEIGHT, this, this);
