@@ -212,6 +212,124 @@ public class Game {
     }
 
     /**
+     * Game boundary.
+     */
+    public static class Boundary {
+
+        private int width;
+        private int height;
+
+        /**
+         * Initialize {@code Boundary}.
+         * @param width Width
+         * @param height Height
+         */
+        public Boundary(int width, int height) {
+            this.width = width;
+            this.height = height;
+        }
+
+        /**
+         * Change size and apply walls to city.
+         * @param city City to apply boundaries to
+         */
+        public void apply(City city) {
+            city.setSize(width, height);
+
+            for (int i = 0; i <= width; i++) {
+                new Wall(city, 0, i, becker.robots.Direction.NORTH);
+                new Wall(city, height, i, becker.robots.Direction.SOUTH);
+            }
+
+            for (int i = 0; i <= height; i++) {
+                new Wall(city, i, 0, becker.robots.Direction.WEST);
+                new Wall(city, i, width, becker.robots.Direction.EAST);
+            }
+        }
+
+        /**
+         * Get random {@code X} value.
+         * @return Value
+         */
+        public int randomX() {
+            Random random = ThreadLocalRandom.current();
+            return random.nextInt(width);
+        }
+
+        /**
+         * Get random {@code Y} value.
+         * @return Value
+         */
+        public int randomY() {
+            Random random = ThreadLocalRandom.current();
+            return random.nextInt(height);
+        }
+
+        /**
+         * Get whether a move starting in the specified position towards
+         * the specified direction is allowed given this boundaries.
+         *
+         * @param x Initial position {@code X}
+         * @param y Initial position {@code Y}
+         * @param direction Direction
+         * @return Whether the move is allowed
+         */
+        public boolean isMoveAllowed(int x, int y, Direction direction) {
+            switch (direction) {
+                case UP:
+                    if (y == 0) return false;
+                    break;
+
+                case LEFT:
+                    if (x == 0) return false;
+                    break;
+
+                case DOWN:
+                    if (y == height) return false;
+                    break;
+
+                case RIGHT:
+                    if (x == width) return false;
+                    break;
+            }
+
+            return true;
+        }
+
+        /**
+         * Limit the number of steps that can be taken starting in the
+         * specified position towards the specified direction.
+         *
+         * @param x Initial position {@code X}
+         * @param y Initial position {@code Y}
+         * @param steps Intended number of steps
+         * @param direction Direction
+         * @return Number of steps
+         */
+        public int limitMove(int x, int y, int steps, Direction direction) {
+            switch (direction) {
+                case UP:
+                    if ((y - steps) < 0) steps = y;
+                    break;
+
+                case LEFT:
+                    if ((x - steps) < 0) steps = x;
+                    break;
+
+                case DOWN:
+                    if ((y + steps) > height) steps = height - y;
+                    break;
+
+                case RIGHT:
+                    if ((x + steps) > width) steps = width - x;
+                    break;
+            }
+
+            return steps;
+        }
+    }
+
+    /**
      * Base controller {@code Thread}.
      */
     public static abstract class Controller extends Thread {
@@ -319,23 +437,18 @@ public class Game {
     public static abstract class RobotController extends Controller {
 
         protected DestroyableRobot robot;
-
-        protected int width;
-        protected int height;
+        protected Boundary boundary;
 
         /**
          * Initialize {@code Controller}.
          * @param robot Robot to control
-         * @param width Width boundary
-         * @param height Height boundary
+         * @param boundary Boundaries
          */
-        public RobotController(DestroyableRobot robot, int width, int height) {
+        public RobotController(DestroyableRobot robot, Boundary boundary) {
             super();
 
             this.robot = robot;
-
-            this.width = width;
-            this.height = height;
+            this.boundary = boundary;
         }
     }
 
@@ -347,11 +460,10 @@ public class Game {
         /**
          * Initialize {@code EnemyRobotController}.
          * @param robot Robot to control
-         * @param width Width boundary
-         * @param height Height boundary
+         * @param boundary Boundaries
          */
-        public EnemyRobotController(DestroyableRobot robot, int width, int height) {
-            super(robot, width, height);
+        public EnemyRobotController(DestroyableRobot robot, Boundary boundary) {
+            super(robot, boundary);
         }
 
         @Override
@@ -364,26 +476,9 @@ public class Game {
                 robot.turnRight();
             }
 
-            int x = robot.getAvenue();
-            int y = robot.getStreet();
-
-            int steps = random.nextInt(4);
-
-            // Check boundaries
-            switch (robot.getDirection()) {
-                case NORTH:
-                    if ((y - steps) < 0) steps = y;
-                    break;
-                case WEST:
-                    if ((x - steps) < 0) steps = x;
-                    break;
-                case SOUTH:
-                    if ((y + steps) > height) steps = height - y;
-                    break;
-                case EAST:
-                    if ((x + steps) > width) steps = width - x;
-                    break;
-            }
+            int steps = boundary.limitMove(
+                    robot.getAvenue(), robot.getStreet(), random.nextInt(4),
+                    Direction.fromBecker(robot.getDirection()));
 
             robot.move(steps);
         }
@@ -452,20 +547,23 @@ public class Game {
 
         private BlockingQueue<Task> queue = new LinkedBlockingQueue<>();
 
+        private boolean bounded;
         protected Listener listener;
 
         /**
          * Initialize {@code UserRobotController}.
          * @param robot Robot to control
-         * @param width Width boundary
-         * @param height Height boundary
+         * @param boundary Boundaries
+         * @param bounded Whether moves are limited to boundary
          * @param listener Action listener
          */
         public UserRobotController(
-                DestroyableRobot robot, int width, int height,
-                Listener listener) {
+                DestroyableRobot robot, Boundary boundary,
+                boolean bounded, Listener listener) {
 
-            super(robot, width, height);
+            super(robot, boundary);
+
+            this.bounded = bounded;
             this.listener = listener;
         }
 
@@ -505,26 +603,12 @@ public class Game {
             Direction current = Direction.fromBecker(robot.getDirection());
 
             if (current == next) {
-                int x = robot.getAvenue();
-                int y = robot.getStreet();
+                if (!bounded || boundary.isMoveAllowed(
+                        robot.getAvenue(), robot.getStreet(),
+                        Direction.fromBecker(robot.getDirection()))) {
 
-                // Check boundaries
-                switch (robot.getDirection()) {
-                    case NORTH:
-                        if (y == 0) return;
-                        break;
-                    case WEST:
-                        if (x == 0) return;
-                        break;
-                    case SOUTH:
-                        if (y == height) return;
-                        break;
-                    case EAST:
-                        if (x == width) return;
-                        break;
+                    robot.move();
                 }
-
-                robot.move();
             } else {
                 Direction.Delta delta = current.delta(next);
 
@@ -543,11 +627,11 @@ public class Game {
 
     private static final String PRIZE_ICON_PATH = "prize.jpeg";
     private static final double USER_SPEED = 10;
+    private static final boolean USER_BOUNDED = true;
 
     private City city;
     private Mode mode;
-    private int width;
-    private int height;
+    private Boundary boundary;
 
     private DestroyableRobot enemy;
     private DestroyableRobot user;
@@ -564,24 +648,24 @@ public class Game {
 
     /**
      * Initialize {@code Game}.
+     *
      * @param city City in which the game is played
      * @param mode Initial difficulty mode
-     * @param width Width boundary
-     * @param height Height boundary
+     * @param boundary Boundaries
+     *
      * @param worldListener {@code WorldController.Listener}
      * @param userListener {@code UserRobotController.Listener}
      */
     public Game(
-            City city, Mode mode, int width, int height,
+            City city, Mode mode, Boundary boundary,
             WorldController.Listener worldListener,
             UserRobotController.Listener userListener) {
 
         this.city = city;
-        this.city.setSize(width, height);
         this.mode = mode;
+        this.boundary = boundary;
 
-        this.width = width;
-        this.height = height;
+        this.boundary.apply(this.city);
 
         this.worldListener = worldListener;
         this.userListener = userListener;
@@ -615,14 +699,12 @@ public class Game {
      * Initialize game.
      */
     public void reset() {
-        Random random = ThreadLocalRandom.current();
-
         // Create enemy
         if (enemy != null) {
             enemy.remove();
         }
         enemy = new DestroyableRobot(
-                city, random.nextInt(width), random.nextInt(height),
+                city, boundary.randomX(), boundary.randomY(),
                 Direction.random().toBecker());
         enemy.setColor(Color.RED);
 
@@ -631,7 +713,7 @@ public class Game {
             user.remove();
         }
         user = new DestroyableRobot(
-                city, random.nextInt(width), random.nextInt(height),
+                city, boundary.randomX(), boundary.randomY(),
                 Direction.random().toBecker());
         user.setColor(Color.BLUE);
 
@@ -639,7 +721,7 @@ public class Game {
         if (thing != null) {
             thing.setIcon(null);
         }
-        thing = new Thing(city, random.nextInt(width), random.nextInt(height));
+        thing = new Thing(city, boundary.randomX(), boundary.randomY());
         thing.setIcon(new ImageIcon(PRIZE_ICON_PATH));
 
         reflectMode();
@@ -651,12 +733,10 @@ public class Game {
     public void start() {
         running = true;
 
-        worldController = new WorldController(
-                user, enemy, worldListener);
-        enemyController = new EnemyRobotController(
-                enemy, width, height);
+        worldController = new WorldController(user, enemy, worldListener);
+        enemyController = new EnemyRobotController(enemy, boundary);
         userController = new UserRobotController(
-                user, width, height, userListener);
+                user, boundary, USER_BOUNDED, userListener);
 
         worldController.start();
         enemyController.start();

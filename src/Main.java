@@ -89,7 +89,8 @@ public class Main implements
         // Create and start game
         game = new Game(
                 city, Game.Mode.DEFAULT,
-                CITY_WIDTH, CITY_HEIGHT, this, this);
+                new Game.Boundary(CITY_WIDTH, CITY_HEIGHT),
+                this, this);
         game.setMode(Game.Mode.DEFAULT);
         game.reset();
         game.start();
