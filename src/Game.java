@@ -541,6 +541,8 @@ public class Game {
         }
     }
 
+    private static final String PRIZE_ICON_PATH = "prize.jpeg";
+
     private City city;
     private Mode mode;
     private int width;
@@ -617,7 +619,9 @@ public class Game {
         enemy.setColor(Color.RED);
 
         // Create thing
-        new Thing(city, random.nextInt(width), random.nextInt(height));
+        Thing thing = new Thing(
+                city, random.nextInt(width), random.nextInt(height));
+        thing.setIcon(new ImageIcon(PRIZE_ICON_PATH));
 
         // Reflect difficulty mode
         setMode(this.mode);
