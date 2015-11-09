@@ -17,6 +17,14 @@ public class Main implements
         new Main().start();
     }
 
+    private static final String WIN_TITLE = "Game";
+    private static final int WIN_WIDTH = 640;
+    private static final int WIN_HEIGHT = 480;
+
+    private static final String DIALOG_TITLE = "Game Over";
+    private static final String DIALOG_WIN = "You win! \n Restart game?";
+    private static final String DIALOG_LOSE = "You lose! \n Restart game?";
+
     private static final int CITY_WIDTH = 10;
     private static final int CITY_HEIGHT = 10;
     private static final int CITY_ZOOM = 30;
@@ -28,12 +36,7 @@ public class Main implements
             new BorderUIResource.EmptyBorderUIResource(
                     BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH);
 
-    private static final String WIN_TITLE = "Game";
-    private static final int WIN_WIDTH = 640;
-    private static final int WIN_HEIGHT = 480;
-
     private Game game;
-
     private CityView view;
 
     public void start() {
@@ -68,7 +71,7 @@ public class Main implements
         game = new Game(
                 city, Game.Mode.DEFAULT,
                 CITY_WIDTH, CITY_HEIGHT, this, this);
-        game.getUser().setSpeed(10);
+        game.setMode(Game.Mode.DEFAULT);
         game.reset();
         game.start();
     }
@@ -129,10 +132,15 @@ public class Main implements
 
     @Override
     public void onThingPicked() {
-        try {
-            game.getEnemy().destroy();
-        } catch (RobotException exception) {
-            // TODO: Finish game
+        game.getEnemy().destroy();
+
+        int result = JOptionPane.showConfirmDialog(null,
+                DIALOG_WIN, DIALOG_TITLE, JOptionPane.YES_NO_OPTION);
+
+        if (result == JOptionPane.YES_OPTION) {
+            onRestart();
+        } else {
+            onQuit();
         }
     }
 
@@ -151,6 +159,17 @@ public class Main implements
 
     @Override
     public void onCollisionChanged(boolean collision) {
-        // TODO: Finish game
+        if (collision) {
+            game.getUser().destroy();
+
+            int result = JOptionPane.showConfirmDialog(null,
+                DIALOG_LOSE, DIALOG_TITLE, JOptionPane.YES_NO_OPTION);
+
+            if (result == JOptionPane.YES_OPTION) {
+                onRestart();
+            } else {
+                onQuit();
+            }
+        }
     }
 }

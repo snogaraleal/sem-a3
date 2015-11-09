@@ -1,5 +1,6 @@
 import becker.robots.City;
 import becker.robots.Direction;
+import becker.robots.RobotException;
 import becker.robots.RobotSE;
 
 public class DestroyableRobot extends RobotSE {
@@ -10,7 +11,22 @@ public class DestroyableRobot extends RobotSE {
         super(city, x, y, direction);
     }
 
+    /**
+     * Destroy robot.
+     */
     public void destroy() {
-        breakRobot(MESSAGE);
+        try {
+            breakRobot(MESSAGE);
+        } catch (RobotException exception) {
+            // Robot destroyed
+        }
+    }
+
+    /**
+     * Remove robot.
+     */
+    public void remove() {
+        destroy();
+        setTransparency(1.0);
     }
 }

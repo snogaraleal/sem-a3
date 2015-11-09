@@ -142,7 +142,7 @@ public class Game {
         }
 
         /**
-         * Get from Becker Robots API equivalent.
+         * Get equivalent to Becker Robots API.
          * @param direction {@code becker.robots.Direction}
          * @return Direction
          * @throws NoSuchElementException
@@ -542,6 +542,7 @@ public class Game {
     }
 
     private static final String PRIZE_ICON_PATH = "prize.jpeg";
+    private static final double USER_SPEED = 10;
 
     private City city;
     private Mode mode;
@@ -550,6 +551,7 @@ public class Game {
 
     private DestroyableRobot enemy;
     private DestroyableRobot user;
+    private Thing thing;
 
     private WorldController worldController;
     private EnemyRobotController enemyController;
@@ -583,14 +585,6 @@ public class Game {
 
         this.worldListener = worldListener;
         this.userListener = userListener;
-
-        Random random = ThreadLocalRandom.current();
-
-        // Create user
-        user = new DestroyableRobot(
-                city, random.nextInt(width), random.nextInt(height),
-                Direction.random().toBecker());
-        user.setColor(Color.BLUE);
     }
 
     /**
@@ -599,11 +593,22 @@ public class Game {
      */
     public void setMode(Mode mode) {
         this.mode = mode;
+        this.reflectMode();
+    }
 
-        // Change enemy speed right away
-        double speed = user.getSpeed();
-        speed *= mode.getSpeed();
-        enemy.setSpeed(speed);
+    /**
+     * Reflect difficulty mode.
+     */
+    private void reflectMode() {
+        // Configure enemy
+        if (enemy != null) {
+            enemy.setSpeed(USER_SPEED * mode.getSpeed());
+        }
+
+        // Configure user
+        if (user != null) {
+            user.setSpeed(USER_SPEED);
+        }
     }
 
     /**
@@ -613,18 +618,31 @@ public class Game {
         Random random = ThreadLocalRandom.current();
 
         // Create enemy
+        if (enemy != null) {
+            enemy.remove();
+        }
         enemy = new DestroyableRobot(
                 city, random.nextInt(width), random.nextInt(height),
                 Direction.random().toBecker());
         enemy.setColor(Color.RED);
 
+        // Create user
+        if (user != null) {
+            user.remove();
+        }
+        user = new DestroyableRobot(
+                city, random.nextInt(width), random.nextInt(height),
+                Direction.random().toBecker());
+        user.setColor(Color.BLUE);
+
         // Create thing
-        Thing thing = new Thing(
-                city, random.nextInt(width), random.nextInt(height));
+        if (thing != null) {
+            thing.setIcon(null);
+        }
+        thing = new Thing(city, random.nextInt(width), random.nextInt(height));
         thing.setIcon(new ImageIcon(PRIZE_ICON_PATH));
 
-        // Reflect difficulty mode
-        setMode(this.mode);
+        reflectMode();
     }
 
     /**
